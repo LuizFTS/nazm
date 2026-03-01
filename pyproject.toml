@@ -1,64 +1,19 @@
 [build-system]
-requires = ["hatchling>=1.21.0"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "nazm"
-dynamic = ["version"]
-description = "Reliable screen image detection and desktop automation engine for Python"
-readme = { file = "README.md", content-type = "text/markdown" }
-license = { file = "LICENSE" }
-authors = [{ name = "Luiz", email = "your@email.com" }]
-requires-python = ">=3.10"
-
-keywords = [
-    "automation",
-    "desktop automation",
-    "image recognition",
-    "pyautogui",
-    "screen automation",
-    "rpa",
-]
-
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: Microsoft :: Windows",
-    "Programming Language :: Python :: 3 :: Only",
-    "Typing :: Typed",
-]
-
+version = "0.1.0"
+description = "Vision system for UI automation"
+readme = "README.md"
+requires-python = ">=3.8"
 dependencies = [
-    "pyautogui>=0.9.54",
-    "pillow>=10.0.0",
-    "tenacity>=8.2.0",
-    "structlog>=23.0.0",
+    "opencv-python",
+    "numpy",
+    "mss",
+    "pyautogui",
 ]
 
-[project.optional-dependencies]
-vision = [
-    "opencv-python>=4.8.0",
-    "numpy>=1.24.0",
-]
-
-dev = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-    "mypy>=1.5.0",
-    "twine>=4.0.0",
-    "build>=1.0.0",
-]
-
-[project.urls]
-Homepage = "https://github.com/yourorg/nazm"
-Repository = "https://github.com/yourorg/nazm"
-Issues = "https://github.com/yourorg/nazm/issues"
-
-[tool.hatch.version]
-path = "src/nazm/__version__.py"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/nazm"]
+[tool.setuptools.packages.find]
+where = ["src"]
