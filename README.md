@@ -32,15 +32,13 @@ pip install nazm
 ## Quick example
 
 ```python
-from nazm import Engine
+import nazm
 
-engine = Engine()
-
-engine.wait_for("login_button.png")
-engine.click("login_button.png")
-engine.type("username_field.png", "admin")
-engine.type("password_field.png", "secret")
-engine.click("submit.png")
+nazm.wait_for("login_button.png")
+nazm.click("login_button.png")
+nazm.type_into("username_field.png", "admin")
+nazm.type_into("password_field.png", "secret")
+nazm.click("submit.png")
 ```
 
 ---
