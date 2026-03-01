@@ -24,8 +24,11 @@ by callers via the `post_processors` extension point (not implemented in MVP).
 
 import logging
 import time
+import os
 from dataclasses import dataclass, field
 from typing import Optional
+from pathlib import Path
+
 
 import cv2
 
@@ -211,10 +214,11 @@ def find_element(
     if timeout is not None:          cfg.timeout          = timeout
     if poll_interval is not None:    cfg.poll_interval    = poll_interval
 
-    template_bgr = _load_template(template_path)
+    actual_path = resolve_template_path(template_path)
+    template_bgr = _load_template(actual_path)
 
     logger.info(
-        f"Searching for '{template_path}' "
+        f"Searching for '{template_path}' (Resolved: {actual_path}) "
         f"[monitor={cfg.monitor_index}, "
         f"tmpl_threshold={cfg.threshold_template}, "
         f"ssim_threshold={cfg.threshold_ssim}, "
@@ -334,3 +338,27 @@ def find_element(
         template_path=template_path,
         timeout=cfg.timeout,
     )
+
+def resolve_template_path(name: str) -> str:
+    """
+    Tenta encontrar o template. 
+    1. Verifica se 'name' já é um caminho real.
+    2. Se não, procura na pasta de templates do AppData.
+    """
+    # Se o arquivo já existe no caminho passado, usa ele mesmo
+    if os.path.exists(name):
+        return name
+        
+    # Se não existe, procura no AppData
+    appdata_dir = Path(os.getenv('APPDATA')) / "nazm" / "templates"
+    
+    # Tenta com o nome exato e também garantindo a extensão .png
+    possible_names = [name, f"{name}.png", f"{name}.jpg"]
+    
+    for n in possible_names:
+        full_path = appdata_dir / n
+        if full_path.exists():
+            return str(full_path)
+            
+    # Se chegar aqui, o arquivo realmente não foi encontrado
+    return name

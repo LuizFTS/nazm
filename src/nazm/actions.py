@@ -7,7 +7,6 @@ Higher-level compound actions (find + act) live in __init__.py.
 """
 
 import logging
-import time
 
 import pyautogui
 

@@ -77,6 +77,7 @@ from .actions import (
 from .cursor import wait_cursor_normal as _wait_cursor_normal, is_cursor_busy
 from .exceptions import ElementNotFoundError
 from .screen import list_monitors, capture_screen_with_offset, capture_screen
+from . import capture
 
 logger = logging.getLogger(__name__)
 
