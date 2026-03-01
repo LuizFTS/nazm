@@ -80,7 +80,7 @@ from .screen import list_monitors, capture_screen_with_offset, capture_screen
 
 logger = logging.getLogger(__name__)
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     # Core
