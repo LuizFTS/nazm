@@ -137,7 +137,7 @@ def type_text(text: str, interval: float = 0.05) -> None:
         interval: Delay between keystrokes in seconds.
     """
     logger.info(f"Type: {text!r}")
-    pyautogui.typewrite(text, interval=interval)
+    pyautogui.write(text, interval=interval)
 
 
 def press_key(key: str) -> None:

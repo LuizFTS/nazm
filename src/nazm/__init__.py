@@ -14,6 +14,8 @@ Public API — element interaction
     right_click(path)           Right-click a detected element
     move_to(path)               Hover cursor over element (no click)
     type_into(path, text)       Click element, then type text
+    type(text, interval)        Type text
+    press(key)                  Press a key
     click_offset(path, dx, dy)  Click at (dx, dy) pixels from element centre
     scroll_at(path, clicks)     Scroll mouse wheel at element location
     drag_to_element(src, dst)   Drag from one element to another
@@ -198,16 +200,101 @@ def find(
 
 def click(
     template_path: str,
+    dx: int = 0,
+    dy: int = 0,
     config: Optional[SearchConfig] = None,
     button: str = "left",
     move_duration: float = 0.1,
     **kwargs,
 ) -> MatchResult:
-    """Locate a UI element and left-click it."""
+    """
+    Locate a UI element using template matching and perform a mouse click.
+
+    Architectural Role:
+    -------------------
+    High-level automation primitive that composes:
+    - Visual search (_find_with_offset)
+    - Coordinate adjustment
+    - Low-level mouse interaction (_click_xy)
+
+    This function acts as an orchestration layer within a UI automation
+    pipeline, abstracting away detection and interaction mechanics.
+
+    Inputs:
+    -------
+    template_path : str
+        Filesystem path to the image template used for visual matching.
+
+    dx : int (default=0)
+        Horizontal offset applied to the detected element's center.
+        Useful for clicking relative subregions (e.g., inside a button).
+
+    dy : int (default=0)
+        Vertical offset applied to the detected element's center.
+
+    config : Optional[SearchConfig]
+        Search configuration object controlling matching behavior
+        (thresholds, scaling, verification stages, etc.).
+        If None, a default configuration is resolved.
+
+    button : str (default="left")
+        Mouse button to press ("left", "right", etc.).
+
+    move_duration : float (default=0.1)
+        Duration of mouse movement animation before clicking.
+        Short durations reduce visual latency but may increase
+        detectability in automation-sensitive environments.
+
+    **kwargs :
+        Forwarded directly to _find_with_offset.
+        Typically used for overriding search parameters dynamically.
+
+    Returns:
+    --------
+    MatchResult
+        Result object describing the detected match, including
+        bounding box, confidence score, and center coordinates.
+
+    Side Effects:
+    -------------
+    - Moves the mouse cursor.
+    - Performs a system-level mouse click.
+    - May raise exceptions if template is not found (depending on
+      _find_with_offset implementation).
+
+    Assumptions:
+    ------------
+    - Template image exists and is valid.
+    - Screen state is stable during search and click.
+    - _find_with_offset returns:
+        (MatchResult, offset_x, offset_y)
+      where offsets represent global coordinate adjustments.
+
+    Concurrency Considerations:
+    ---------------------------
+    Not thread-safe if underlying mouse or screen capture operations
+    are not synchronized. Intended for sequential automation flows.
+    """
+
+    # Resolve effective search configuration.
+    # Allows caller to override global defaults selectively.
     cfg = _resolve_cfg(config)
+
+    # Perform template matching and retrieve:
+    # - result: structured match metadata
+    # - ox, oy: global offset corrections (e.g., region-based search adjustments)
     result, ox, oy = _find_with_offset(template_path, cfg, **kwargs)
-    _click_xy(result.center[0] + ox, result.center[1] + oy,
-               button=button, move_duration=move_duration)
+
+    # Compute final absolute screen coordinates:
+    # center of detected match + caller-provided offsets + search offsets.
+    x = result.center[0] + dx + ox
+    y = result.center[1] + dy + oy
+
+    # Execute low-level mouse interaction.
+    # Encapsulates platform-specific input handling.
+    _click_xy(x, y, button=button, move_duration=move_duration)
+
+    # Return match metadata to allow caller inspection (confidence, bbox, etc.)
     return result
 
 
@@ -285,38 +372,44 @@ def type_into(
     _type_text(text, interval=interval)
     return result
 
-
-def click_offset(
-    template_path: str,
-    dx: int,
-    dy: int,
-    config: Optional[SearchConfig] = None,
-    button: str = "left",
-    move_duration: float = 0.1,
-    **kwargs,
-) -> MatchResult:
+def type(
+    text: str,
+    interval: float = 0.05,
+) -> None:
     """
-    Click at an offset from the detected element centre.
-
-    Useful when the clickable area is adjacent to the visual landmark
-    (e.g. clicking the dropdown arrow next to a labelled field).
+    Type text into the current focused element.
 
     Args:
-        template_path: Template image.
-        dx:            Horizontal pixel offset from element centre.
-        dy:            Vertical pixel offset from element centre.
-        config:        Optional SearchConfig.
-        button:        Mouse button.
-        move_duration: Cursor animation duration.
-        **kwargs:      Forwarded to find().
+        text:          Text to type.
+        interval:      Delay between keystrokes in seconds.
     """
-    cfg = _resolve_cfg(config)
-    result, ox, oy = _find_with_offset(template_path, cfg, **kwargs)
-    x = result.center[0] + dx + ox
-    y = result.center[1] + dy + oy
-    _click_xy(x, y, button=button, move_duration=move_duration)
-    return result
+    _type_text(text, interval=interval)
 
+def press(
+    key: str,
+    presses: int = 1,
+) -> None:
+    """
+    Press a key.
+
+    Args:
+        key:          Key to press.
+    """
+    for _ in range(presses):
+        _press_key(key)
+
+def double_press(
+        first_key: str,
+        second_key: str,
+):
+    """
+    Press two keys in quick succession.
+
+    Args:
+        first_key:     First key to press.
+        second_key:    Second key to press immediately after the first.
+    """
+    _hotkey(first_key, second_key)
 
 def scroll_at(
     template_path: str,
