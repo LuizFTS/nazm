@@ -391,8 +391,14 @@ def load_templates():
     # Iterate through discovered templates and assign attributes dynamically
     for path_obj in list_templates():
         var_name = path_obj.stem
+        abs_path = str(path_obj.absolute())
+
+        img_matrix = cv2.imread(abs_path)
+
+        if img_matrix is None:
+            print(f"[WARNING] Falha ao carregar template: {abs_path}")
 
         # Dynamically inject attribute:
         # assets.<filename_without_extension> = absolute_path
-        setattr(assets, var_name, str(path_obj.absolute()))
+        setattr(assets, var_name, img_matrix)
     return assets

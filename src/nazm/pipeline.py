@@ -32,7 +32,7 @@ from pathlib import Path
 
 import cv2
 
-from .screen import capture_screen
+from .screen import capture_screen, _capture_screen
 from .template_matching import multiscale_template_match, TemplateMatchCandidate
 from .feature_matching import akaze_match, FeatureMatchCandidate
 from .similarity import ssim_verify
@@ -170,7 +170,7 @@ def _try_confirm(
 # ---------------------------------------------------------------------------
 
 def find_element(
-    template_path: str,
+    template_path,
     config: Optional[SearchConfig] = None,
     # Convenience flat overrides — applied after config is resolved
     monitor_index: Optional[int] = None,
@@ -214,9 +214,6 @@ def find_element(
     if timeout is not None:          cfg.timeout          = timeout
     if poll_interval is not None:    cfg.poll_interval    = poll_interval
 
-    actual_path = resolve_template_path(template_path)
-    template_bgr = _load_template(actual_path)
-
     logger.info(
         f"Searching for '{template_path}' (Resolved: {actual_path}) "
         f"[monitor={cfg.monitor_index}, "
@@ -239,7 +236,7 @@ def find_element(
         # ── Stage 1: Multi-scale edge-based template matching ──────────────
         tmpl_candidate: Optional[TemplateMatchCandidate] = multiscale_template_match(
             screen=screen,
-            template=template_bgr,
+            template=template_path,
             threshold=cfg.threshold_template,
             scales=cfg.scales,
             canny_low=cfg.canny_low,
@@ -250,7 +247,7 @@ def find_element(
             cx, cy = tmpl_candidate.center
             passed, ssim_score = _try_confirm(
                 screen=screen,
-                template=template_bgr,
+                template=template_path,
                 cx=cx,
                 cy=cy,
                 region_size=tmpl_candidate.match_size,
@@ -283,7 +280,7 @@ def find_element(
         # ── Stage 2: AKAZE feature matching + RANSAC ───────────────────────
         feat_candidate: Optional[FeatureMatchCandidate] = akaze_match(
             screen=screen,
-            template=template_bgr,
+            template=template_path,
             min_inliers=cfg.min_akaze_inliers,
         )
 
@@ -291,7 +288,7 @@ def find_element(
             cx, cy = feat_candidate.center
             passed, ssim_score = _try_confirm(
                 screen=screen,
-                template=template_bgr,
+                template=template_path,
                 cx=cx,
                 cy=cy,
                 region_size=feat_candidate.match_size,
@@ -362,3 +359,84 @@ def resolve_template_path(name: str) -> str:
             
     # Se chegar aqui, o arquivo realmente não foi encontrado
     return name
+
+
+
+def element_exists(
+        template_path,
+        threshold: Optional[float] = None
+    ) -> bool:
+    """
+    Check if an element exists on screen without waiting.
+    
+    Args:
+        template_path: Path to the template image file
+        threshold: Similarity threshold (uses default if not specified)
+    
+    Returns:
+        True if element found, False otherwise
+    """
+    if threshold is None:
+        threshold = 0.8
+    
+    # Capture current screen
+    screenshot = _capture_screen()
+    
+    # Load template image
+    if template_path is None:
+        raise FileNotFoundError(f"Template image not found: {template_path}")
+    
+    # Perform template matching
+    result = cv2.matchTemplate(
+        screenshot,
+        template_path,
+        cv2.TM_CCOEFF_NORMED
+    )
+    _, max_val, _, _ = cv2.minMaxLoc(result)
+
+    return max_val >= threshold
+
+def find_element_coords(
+    template_img,
+    timeout: float = 5.0,
+    threshold: float = 0.8
+) -> tuple[bool, int, int]:
+    """
+    Retorna (Encontrou?, Centro_X, Centro_Y).
+    """
+    
+    
+    # 2. Match (template_img aqui já deve ser a matriz do cv2.imread)
+    
+
+    start_time = time.time()
+    end_time = start_time + timeout
+    h, w = template_img.shape[:2]
+
+    while time.time() < end_time:
+        # 1. Captura a tela
+        screenshot = _capture_screen()
+        if screenshot is None or template_img is None:
+            return False, 0, 0
+
+        result = cv2.matchTemplate(
+            screenshot,
+            template_img,
+            cv2.TM_CCOEFF_NORMED
+        )
+    
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)
+
+
+
+        if max_val >= threshold:
+            # 3. Calcula o centro do elemento encontrado
+            h, w = template_img.shape[:2]
+            center_x = max_loc[0] + (w // 2)
+            center_y = max_loc[1] + (h // 2)
+            
+            return True, center_x, center_y
+        time.sleep(0.2)
+    
+    # Caso não encontre, retorna Falso e coordenadas zeradas (ou None)
+    return False, 0, 0

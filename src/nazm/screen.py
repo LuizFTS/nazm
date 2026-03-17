@@ -9,6 +9,8 @@ from typing import Optional
 
 import mss
 import numpy as np
+import pyautogui as pi
+import cv2
 
 from .exceptions import ScreenCaptureError
 
@@ -82,3 +84,15 @@ def capture_region(x: int, y: int, width: int, height: int) -> np.ndarray:
             return img[:, :, :3]
     except mss.exception.ScreenShotError as exc:
         raise ScreenCaptureError(f"mss failed to capture region: {exc}") from exc
+
+
+def _capture_screen() -> np.ndarray:
+        """
+        Capture the current screen as an OpenCV image.
+        
+        Returns:
+            Screen capture as numpy array in BGR format
+        """
+        screenshot = pi.screenshot()
+        # Convert RGB to BGR for OpenCV
+        return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
