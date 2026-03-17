@@ -62,7 +62,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from .pipeline import find_element, MatchResult, SearchConfig
+from .pipeline import find_element, MatchResult, SearchConfig, element_exists, find_element_coords
 from .actions import (
     click as _click_xy,
     double_click as _double_click_xy,
@@ -103,6 +103,8 @@ __all__ = [
     # Config
     "set_config", "list_monitors",
     "SearchConfig", "MatchResult", "ElementNotFoundError",
+    "find_element_in_image",
+    "element_exists"
 ]
 
 # ---------------------------------------------------------------------------
@@ -147,22 +149,33 @@ def _resolve_cfg(config: Optional[SearchConfig]) -> SearchConfig:
 
 
 def _find_with_offset(
-    template_path: str,
+    template_path,
     config: SearchConfig,
-    **kwargs,
 ) -> tuple[MatchResult, int, int]:
     """
     Run find_element and also return the monitor offset (offset_x, offset_y).
     The offset must be added to result.center before calling pyautogui.
     """
-    _, offset_x, offset_y = capture_screen_with_offset(config.monitor_index)
-    result = find_element(template_path=template_path, config=config, **kwargs)
-    return result, offset_x, offset_y
+    #_, offset_x, offset_y = capture_screen_with_offset(config.monitor_index)
+    result, x, y = find_element_coords(template_path)
+    return result, x, y
 
 
 # ---------------------------------------------------------------------------
 # Core: find
 # ---------------------------------------------------------------------------
+
+def find_element_in_image(screen, template) -> MatchResult:
+    """Realiza o match de um template dentro de uma imagem já capturada."""
+    if template is None or screen is None:
+        return None
+
+    res = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, _ = cv2.minMaxLoc(res)
+
+    if max_val >= 0.8:
+        return max_val  # Retorna o score ou MatchResult
+    return None
 
 def find(
     template_path: str,
@@ -209,71 +222,6 @@ def click(
 ) -> MatchResult:
     """
     Locate a UI element using template matching and perform a mouse click.
-
-    Architectural Role:
-    -------------------
-    High-level automation primitive that composes:
-    - Visual search (_find_with_offset)
-    - Coordinate adjustment
-    - Low-level mouse interaction (_click_xy)
-
-    This function acts as an orchestration layer within a UI automation
-    pipeline, abstracting away detection and interaction mechanics.
-
-    Inputs:
-    -------
-    template_path : str
-        Filesystem path to the image template used for visual matching.
-
-    dx : int (default=0)
-        Horizontal offset applied to the detected element's center.
-        Useful for clicking relative subregions (e.g., inside a button).
-
-    dy : int (default=0)
-        Vertical offset applied to the detected element's center.
-
-    config : Optional[SearchConfig]
-        Search configuration object controlling matching behavior
-        (thresholds, scaling, verification stages, etc.).
-        If None, a default configuration is resolved.
-
-    button : str (default="left")
-        Mouse button to press ("left", "right", etc.).
-
-    move_duration : float (default=0.1)
-        Duration of mouse movement animation before clicking.
-        Short durations reduce visual latency but may increase
-        detectability in automation-sensitive environments.
-
-    **kwargs :
-        Forwarded directly to _find_with_offset.
-        Typically used for overriding search parameters dynamically.
-
-    Returns:
-    --------
-    MatchResult
-        Result object describing the detected match, including
-        bounding box, confidence score, and center coordinates.
-
-    Side Effects:
-    -------------
-    - Moves the mouse cursor.
-    - Performs a system-level mouse click.
-    - May raise exceptions if template is not found (depending on
-      _find_with_offset implementation).
-
-    Assumptions:
-    ------------
-    - Template image exists and is valid.
-    - Screen state is stable during search and click.
-    - _find_with_offset returns:
-        (MatchResult, offset_x, offset_y)
-      where offsets represent global coordinate adjustments.
-
-    Concurrency Considerations:
-    ---------------------------
-    Not thread-safe if underlying mouse or screen capture operations
-    are not synchronized. Intended for sequential automation flows.
     """
 
     # Resolve effective search configuration.
@@ -283,19 +231,19 @@ def click(
     # Perform template matching and retrieve:
     # - result: structured match metadata
     # - ox, oy: global offset corrections (e.g., region-based search adjustments)
-    result, ox, oy = _find_with_offset(template_path, cfg, **kwargs)
+    result, ox, oy = _find_with_offset(template_path, cfg)
 
     # Compute final absolute screen coordinates:
     # center of detected match + caller-provided offsets + search offsets.
-    x = result.center[0] + dx + ox
-    y = result.center[1] + dy + oy
+    x = dx + ox
+    y = dy + oy
+
+    print(dx, dy)
+    print(ox, oy)
 
     # Execute low-level mouse interaction.
     # Encapsulates platform-specific input handling.
     _click_xy(x, y, button=button, move_duration=move_duration)
-
-    # Return match metadata to allow caller inspection (confidence, bbox, etc.)
-    return result
 
 
 # Canonical alias — communicates the polling/timeout behaviour
@@ -306,26 +254,23 @@ def double_click(
     template_path: str,
     config: Optional[SearchConfig] = None,
     move_duration: float = 0.1,
-    **kwargs,
 ) -> MatchResult:
     """Locate a UI element and double-click it."""
     cfg = _resolve_cfg(config)
-    result, ox, oy = _find_with_offset(template_path, cfg, **kwargs)
-    _double_click_xy(result.center[0] + ox, result.center[1] + oy,
+    _, ox, oy = _find_with_offset(template_path, cfg)
+    _double_click_xy(ox, + oy,
                      move_duration=move_duration)
-    return result
 
 
 def right_click(
     template_path: str,
     config: Optional[SearchConfig] = None,
     move_duration: float = 0.1,
-    **kwargs,
-) -> MatchResult:
+):
     """Locate a UI element and right-click it."""
     cfg = _resolve_cfg(config)
-    result, ox, oy = _find_with_offset(template_path, cfg, **kwargs)
-    _right_click_xy(result.center[0] + ox, result.center[1] + oy,
+    _, ox, oy = _find_with_offset(template_path, cfg)
+    _right_click_xy(ox, oy,
                     move_duration=move_duration)
     return result
 
@@ -334,12 +279,11 @@ def move_to(
     template_path: str,
     config: Optional[SearchConfig] = None,
     duration: float = 0.1,
-    **kwargs,
 ) -> MatchResult:
     """Move the cursor over an element without clicking (hover)."""
     cfg = _resolve_cfg(config)
-    result, ox, oy = _find_with_offset(template_path, cfg, **kwargs)
-    _move_to_xy(result.center[0] + ox, result.center[1] + oy, duration=duration)
+    _, ox, oy = _find_with_offset(template_path, cfg)
+    _move_to_xy(ox, oy, duration=duration)
     return result
 
 
@@ -432,10 +376,9 @@ def scroll_at(
         MatchResult of the located element.
     """
     cfg = _resolve_cfg(config)
-    result, ox, oy = _find_with_offset(template_path, cfg, **kwargs)
-    _scroll_xy(result.center[0] + ox, result.center[1] + oy,
+    _, ox, oy = _find_with_offset(template_path, cfg)
+    _scroll_xy(ox, oy,
                 clicks=clicks, direction=direction)
-    return result
 
 
 def drag_to_element(
@@ -467,8 +410,8 @@ def drag_to_element(
         ElementNotFoundError: If either element cannot be located.
     """
     cfg = _resolve_cfg(config)
-    src_result, ox, oy = _find_with_offset(source_path, cfg, **kwargs)
-    tgt_result, _, _ = _find_with_offset(target_path, cfg, **kwargs)
+    src_result, ox, oy = _find_with_offset(source_path, cfg)
+    tgt_result, _, _ = _find_with_offset(target_path, cfg)
 
     x1 = src_result.center[0] + ox
     y1 = src_result.center[1] + oy
@@ -490,7 +433,7 @@ def wait_for(
     template_path: str,
     config: Optional[SearchConfig] = None,
     **kwargs,
-) -> MatchResult:
+) -> tuple[bool, int, int]:
     """
     Wait until a UI element appears, then return its location.
     Equivalent to find() — provided as a semantic alias.
@@ -498,7 +441,7 @@ def wait_for(
     Example:
         result = vision.wait_for("assets/save_dialog.png", timeout=30.0)
     """
-    return find(template_path=template_path, config=config, **kwargs)
+    return find_element_coords(template_path)
 
 
 def wait_cursor_normal(
@@ -661,7 +604,7 @@ def wait_screen_stable(
 
 
 def wait_any(
-    template_paths: list[str],
+    template_paths: list[any],
     config: Optional[SearchConfig] = None,
     **kwargs,
 ) -> tuple[str, MatchResult]:
@@ -731,7 +674,7 @@ def wait_any(
 
 
 def wait_all(
-    template_paths: list[str],
+    template_paths: list[any],
     config: Optional[SearchConfig] = None,
     **kwargs,
 ) -> dict[str, MatchResult]:
