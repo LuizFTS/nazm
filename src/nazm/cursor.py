@@ -26,7 +26,6 @@ pixel changes regardless of cursor type.
 import logging
 import sys
 import time
-from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -37,30 +36,30 @@ logger = logging.getLogger(__name__)
 _IS_WINDOWS = sys.platform == "win32"
 
 # Windows system cursor IDs
-_IDC_ARROW        = 32512   # Normal pointer
-_IDC_IBEAM        = 32513   # Text insertion bar
-_IDC_WAIT         = 32514   # Hourglass (application fully busy)
-_IDC_CROSS        = 32515   # Crosshair
-_IDC_SIZENWSE     = 32642   # Resize diagonal ↖↗
-_IDC_SIZENESW     = 32643   # Resize diagonal ↗↙
-_IDC_SIZEWE       = 32644   # Resize horizontal ↔
-_IDC_SIZENS       = 32645   # Resize vertical ↕
-_IDC_HAND         = 32649   # Pointer hand (links)
-_IDC_APPSTARTING  = 32650   # Arrow + hourglass (background busy)
-_IDC_HELP         = 32651   # Arrow + question mark
+_IDC_ARROW = 32512  # Normal pointer
+_IDC_IBEAM = 32513  # Text insertion bar
+_IDC_WAIT = 32514  # Hourglass (application fully busy)
+_IDC_CROSS = 32515  # Crosshair
+_IDC_SIZENWSE = 32642  # Resize diagonal ↖↗
+_IDC_SIZENESW = 32643  # Resize diagonal ↗↙
+_IDC_SIZEWE = 32644  # Resize horizontal ↔
+_IDC_SIZENS = 32645  # Resize vertical ↕
+_IDC_HAND = 32649  # Pointer hand (links)
+_IDC_APPSTARTING = 32650  # Arrow + hourglass (background busy)
+_IDC_HELP = 32651  # Arrow + question mark
 
 _CURSOR_ID_NAMES = {
-    _IDC_ARROW:       "arrow",
-    _IDC_IBEAM:       "ibeam",
-    _IDC_WAIT:        "wait",
-    _IDC_CROSS:       "cross",
-    _IDC_HAND:        "hand",
+    _IDC_ARROW: "arrow",
+    _IDC_IBEAM: "ibeam",
+    _IDC_WAIT: "wait",
+    _IDC_CROSS: "cross",
+    _IDC_HAND: "hand",
     _IDC_APPSTARTING: "appstarting",
-    _IDC_HELP:        "help",
-    _IDC_SIZENWSE:    "sizenwse",
-    _IDC_SIZENESW:    "sizenesw",
-    _IDC_SIZEWE:      "sizewe",
-    _IDC_SIZENS:      "sizens",
+    _IDC_HELP: "help",
+    _IDC_SIZENWSE: "sizenwse",
+    _IDC_SIZENESW: "sizenesw",
+    _IDC_SIZEWE: "sizewe",
+    _IDC_SIZENS: "sizens",
 }
 
 # Cursor IDs considered "busy" (loading)
@@ -80,9 +79,9 @@ if _IS_WINDOWS:
 
     class _CURSORINFO(ctypes.Structure):
         _fields_ = [
-            ("cbSize",      ctypes.c_uint32),
-            ("flags",       ctypes.c_uint32),
-            ("hCursor",     ctypes.c_void_p),
+            ("cbSize", ctypes.c_uint32),
+            ("flags", ctypes.c_uint32),
+            ("hCursor", ctypes.c_void_p),
             ("ptScreenPos", _POINT),
         ]
 
@@ -126,6 +125,7 @@ if _IS_WINDOWS:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def get_cursor_type() -> str:
     """
     Return a human-readable name for the current system cursor.
@@ -138,7 +138,9 @@ def get_cursor_type() -> str:
         Cursor type string.
     """
     if not _IS_WINDOWS:
-        logger.debug("get_cursor_type: platform not supported, returning 'unsupported'.")
+        logger.debug(
+            "get_cursor_type: platform not supported, returning 'unsupported'."
+        )
         return "unsupported"
     return _cursor_type_name()
 

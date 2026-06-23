@@ -27,7 +27,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from .preprocessing import to_edges, resize_image
+from .preprocessing import resize_image, to_edges
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class TemplateMatchCandidate:
         match_loc:  Top-left corner of the matched region (for SSIM cropping).
         match_size: (width, height) of the matched region at the winning scale.
     """
+
     center: tuple[int, int]
     score: float
     scale: float
@@ -91,7 +92,9 @@ def multiscale_template_match(
         TemplateMatchCandidate with the best score above threshold, or None.
     """
     screen_edges = to_edges(screen, low_threshold=canny_low, high_threshold=canny_high)
-    tmpl_edges_base = to_edges(template, low_threshold=canny_low, high_threshold=canny_high)
+    tmpl_edges_base = to_edges(
+        template, low_threshold=canny_low, high_threshold=canny_high
+    )
 
     screen_h, screen_w = screen_edges.shape
     best: Optional[TemplateMatchCandidate] = None
@@ -110,7 +113,9 @@ def multiscale_template_match(
 
         # Template must be at least 2x2 pixels after scaling
         if t_h < 2 or t_w < 2:
-            logger.debug(f"Scale {scale:.3f}: template too small after scaling — skipping.")
+            logger.debug(
+                f"Scale {scale:.3f}: template too small after scaling — skipping."
+            )
             continue
 
         result_map = cv2.matchTemplate(screen_edges, scaled_tmpl, cv2.TM_CCOEFF_NORMED)

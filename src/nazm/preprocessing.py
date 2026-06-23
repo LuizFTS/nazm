@@ -20,8 +20,6 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from .exceptions import PreprocessingError
-
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------

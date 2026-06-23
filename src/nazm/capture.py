@@ -32,13 +32,15 @@ Design Notes:
 - Not platform-agnostic due to transparent color and APPDATA usage.
 """
 
-import tkinter as tk
-from pathlib import Path
 import os
+import tkinter as tk
+import uuid
+from pathlib import Path
+
+import cv2
 import mss
 import numpy as np
-import cv2
-import uuid
+
 
 class RegionSelector:
     """
@@ -63,6 +65,7 @@ class RegionSelector:
         (global_x, global_y, width, height)
     - Coordinates are normalized so width and height are always positive.
     """
+
     def __init__(self):
         """
         Initializes the full-screen overlay and binds mouse/keyboard events.
@@ -102,26 +105,32 @@ class RegionSelector:
         # Transparent color configuration.
         # Any region filled with this color becomes fully transparent.
         # This creates the "cut-out" effect in the overlay.
-        TRANS_COLOR = '#abcdef' 
-        self.root.attributes('-transparentcolor', TRANS_COLOR)
+        TRANS_COLOR = "#abcdef"
+        self.root.attributes("-transparentcolor", TRANS_COLOR)
 
         # Canvas serves as the drawing surface for selection.
         # Black background combined with alpha produces dimmed overlay effect.
-        self.canvas = tk.Canvas(self.root, cursor="cross", bg="black", highlightthickness=0)
+        self.canvas = tk.Canvas(
+            self.root, cursor="cross", bg="black", highlightthickness=0
+        )
         self.canvas.pack(fill="both", expand=True)
-        
+
         # Semi-transparent overlay effect
-        self.root.attributes('-alpha', 0.6)
-        
+        self.root.attributes("-alpha", 0.6)
+
         # Interaction state
         self.start_x = None
         self.start_y = None
         self.selection = None
 
         # Rectangle representing transparent cut-out area
-        self.rect_fill = self.canvas.create_rectangle(0, 0, 0, 0, fill=TRANS_COLOR, outline="")
+        self.rect_fill = self.canvas.create_rectangle(
+            0, 0, 0, 0, fill=TRANS_COLOR, outline=""
+        )
         # Separate rectangle for visible border
-        self.rect_border = self.canvas.create_rectangle(0, 0, 0, 0, outline='red', width=2)
+        self.rect_border = self.canvas.create_rectangle(
+            0, 0, 0, 0, outline="red", width=2
+        )
 
         # Event bindings (event-driven interaction model)
         self.canvas.bind("<ButtonPress-1>", self.on_button_press)
@@ -138,7 +147,9 @@ class RegionSelector:
         Captures initial anchor coordinates for selection rectangle.
 
         Inputs:
+
         -------
+
         event.x, event.y (local canvas coordinates)
         """
         self.start_x = event.x
@@ -155,13 +166,13 @@ class RegionSelector:
         Coordinates are normalized to support dragging in any direction
         (top-left → bottom-right, bottom-right → top-left, etc.).
         """
-        
+
         cur_x, cur_y = (event.x, event.y)
 
         # Normalize coordinates to ensure x1 < x2 and y1 < y2
         x1, x2 = sorted([self.start_x, cur_x])
         y1, y2 = sorted([self.start_y, cur_y])
-        
+
         # Update transparent cut-out rectangle
         self.canvas.coords(self.rect_fill, x1, y1, x2, y2)
 
@@ -185,19 +196,20 @@ class RegionSelector:
         Destroys the overlay window, ending the Tk main loop.
         """
         end_x, end_y = (event.x, event.y)
-        
+
         # Normalize coordinates to avoid negative dimensions
         x1, x2 = sorted([self.start_x, end_x])
         y1, y2 = sorted([self.start_y, end_y])
 
         # Translate local window coordinates into global desktop coordinates
         self.selection = (
-            int(x1 + self.left), 
-            int(y1 + self.top), 
-            int(x2 - x1), 
-            int(y2 - y1)
+            int(x1 + self.left),
+            int(y1 + self.top),
+            int(x2 - x1),
+            int(y2 - y1),
         )
         self.root.destroy()
+
 
 def interactive_capture():
     """
@@ -230,7 +242,7 @@ def interactive_capture():
     """
     selector = RegionSelector()
     selector.root.mainloop()
-    
+
     # Guard clause: ignore very small selections (noise protection)
     if not selector.selection or selector.selection[2] < 5:
         return None
@@ -250,17 +262,18 @@ def interactive_capture():
 
     # Resolve template directory inside APPDATA
     # Implicit assumption: APPDATA environment variable exists (Windows)
-    save_dir = Path(os.getenv('APPDATA')) / "nazm" / "templates"
+    save_dir = Path(os.getenv("APPDATA")) / "nazm" / "templates"
     save_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate collision-resistant filename using UUID
     random_name = f"cap_{uuid.uuid4().hex[:8]}.png"
     full_path = save_dir / random_name
-    
+
     # Persist image to disk
     cv2.imwrite(str(full_path), img)
 
     return random_name
+
 
 def rename_template(old_name: str, new_name: str):
     """
@@ -300,23 +313,22 @@ def rename_template(old_name: str, new_name: str):
 
     # Resolve base directory for templates.
     # Implicit assumption: Windows environment with APPDATA defined.
-    save_dir = Path(os.getenv('APPDATA')) / "nazm" / "templates"
-    
+    save_dir = Path(os.getenv("APPDATA")) / "nazm" / "templates"
+
     # Construct absolute path for the existing file.
     old_path = save_dir / old_name
-    
+
     # Enforce PNG extension to maintain consistency with template storage format.
     # This ensures naming normalization even if caller omits extension.
-    if not new_name.lower().endswith('.png'):
-        new_name += '.png'
-    
+    if not new_name.lower().endswith(".png"):
+        new_name += ".png"
+
     # Construct target path for rename operation.
     new_path = save_dir / new_name
 
     # Guard clause: verify source file exists before attempting rename.
     # Prevents raising FileNotFoundError and provides controlled failure path.
     if old_path.exists():
-
         # Perform atomic rename operation within same filesystem.
         # On Windows, Path.rename() will overwrite if target exists.
         # No collision prevention or versioning strategy is implemented here.
@@ -327,10 +339,10 @@ def rename_template(old_name: str, new_name: str):
 
         return new_name
     else:
-
         # Explicit failure branch for missing source file.
         print(f"Erro: O arquivo {old_name} não foi encontrado em {save_dir}")
         return None
+
 
 def list_templates():
     """
@@ -345,18 +357,18 @@ def list_templates():
     - Returns empty list if directory does not exist.
     - Filters only '.png' files.
     """
-    save_dir = Path(os.getenv('APPDATA')) / "nazm" / "templates"
-    
+    save_dir = Path(os.getenv("APPDATA")) / "nazm" / "templates"
+
     # Defensive check: directory may not exist on first run
     if not save_dir.exists():
         return []
-    
-    extensions = ('.png')
+
+    extensions = ".png"
 
     return [
-        p for p in save_dir.iterdir() 
-        if p.is_file() and p.suffix.lower() in extensions
+        p for p in save_dir.iterdir() if p.is_file() and p.suffix.lower() in extensions
     ]
+
 
 def load_templates():
     """
@@ -380,10 +392,12 @@ def load_templates():
     - Name collisions overwrite silently.
     - No validation or sanitization performed.
     """
+
     class TemplateAssets:
         """
         Empty container class used as a dynamic namespace.
         """
+
         pass
 
     assets = TemplateAssets()
