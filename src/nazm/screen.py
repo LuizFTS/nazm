@@ -5,12 +5,11 @@ Returns BGR uint8 numpy arrays compatible with OpenCV.
 """
 
 import logging
-from typing import Optional
 
+import cv2
 import mss
 import numpy as np
 import pyautogui as pi
-import cv2
 
 from .exceptions import ScreenCaptureError
 
@@ -24,6 +23,7 @@ def capture_screen_with_offset(monitor_index: int = 1):
         img = np.array(raw, dtype=np.uint8)[:, :, :3]
 
         return img, monitor["left"], monitor["top"]
+
 
 def list_monitors() -> list[dict]:
     """
@@ -59,10 +59,9 @@ def capture_screen(monitor_index: int = 0) -> np.ndarray:
                 )
             raw = sct.grab(monitors[monitor_index])
             img = np.array(raw, dtype=np.uint8)
-            bgr = img[:, :, :3]   # Drop alpha channel
+            bgr = img[:, :, :3]  # Drop alpha channel
             logger.debug(
-                f"Captured monitor {monitor_index}: "
-                f"{bgr.shape[1]}x{bgr.shape[0]}px"
+                f"Captured monitor {monitor_index}: {bgr.shape[1]}x{bgr.shape[0]}px"
             )
             return bgr
     except mss.exception.ScreenShotError as exc:
@@ -87,12 +86,12 @@ def capture_region(x: int, y: int, width: int, height: int) -> np.ndarray:
 
 
 def _capture_screen() -> np.ndarray:
-        """
-        Capture the current screen as an OpenCV image.
-        
-        Returns:
-            Screen capture as numpy array in BGR format
-        """
-        screenshot = pi.screenshot()
-        # Convert RGB to BGR for OpenCV
-        return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+    """
+    Capture the current screen as an OpenCV image.
+
+    Returns:
+        Screen capture as numpy array in BGR format
+    """
+    screenshot = pi.screenshot()
+    # Convert RGB to BGR for OpenCV
+    return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)

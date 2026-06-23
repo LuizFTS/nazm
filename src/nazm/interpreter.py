@@ -1,7 +1,9 @@
 import logging
+
 import nazm
 
 logger = logging.getLogger(__name__)
+
 
 class NazmInterpreter:
     def __init__(self):
@@ -18,7 +20,7 @@ class NazmInterpreter:
             "colar": nazm.paste_into,
             # Você pode adicionar aliases (apelidos) para a mesma função
             "aguardar": nazm.wait_for,
-            "clique": nazm.click
+            "clique": nazm.click,
         }
 
     def executar_linha(self, linha: str):
@@ -42,7 +44,7 @@ class NazmInterpreter:
                 else:
                     # Funções sem argumentos (ex: colar)
                     return func()
-            except nazm.ElementNotFoundError as e:
+            except nazm.ElementNotFoundError:
                 logger.error(f"Erro de Automação: Elemento '{argumento}' não apareceu.")
                 raise
         else:

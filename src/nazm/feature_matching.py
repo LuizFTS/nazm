@@ -44,6 +44,7 @@ class FeatureMatchCandidate:
         inliers:    Number of RANSAC inlier matches (quality indicator).
         match_size: Estimated (width, height) of the found region on screen.
     """
+
     center: tuple[int, int]
     inliers: int
     match_size: tuple[int, int]
@@ -101,8 +102,7 @@ def akaze_match(
     good.sort(key=lambda m: m.distance)
 
     logger.debug(
-        f"AKAZE: {len(raw_matches)} raw → {len(good)} good "
-        f"(min_inliers={min_inliers})"
+        f"AKAZE: {len(raw_matches)} raw → {len(good)} good (min_inliers={min_inliers})"
     )
 
     if len(good) < min_inliers:
@@ -122,7 +122,9 @@ def akaze_match(
     logger.debug(f"AKAZE: homography inliers={inlier_count}")
 
     if inlier_count < min_inliers:
-        logger.debug(f"AKAZE: inlier count {inlier_count} < {min_inliers} — discarding.")
+        logger.debug(
+            f"AKAZE: inlier count {inlier_count} < {min_inliers} — discarding."
+        )
         return None
 
     # Project the four template corners through H to find the on-screen region

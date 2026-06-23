@@ -55,56 +55,100 @@ Public API — configuration
 """
 
 import logging
-import time
 import os
+import time
 from typing import Optional
 
 import cv2
 import numpy as np
 
-from .pipeline import find_element, MatchResult, SearchConfig, element_exists, find_element_coords
+from . import capture
 from .actions import (
     click as _click_xy,
-    double_click as _double_click_xy,
-    right_click as _right_click_xy,
-    move_to as _move_to_xy,
-    type_text as _type_text,
-    press_key as _press_key,
-    hotkey as _hotkey,
-    scroll as _scroll_xy,
-    drag as _drag_xy,
-    clipboard_set as _clipboard_set,
+)
+from .actions import (
     clipboard_get as _clipboard_get,
 )
-from .cursor import wait_cursor_normal as _wait_cursor_normal, is_cursor_busy
+from .actions import (
+    clipboard_set as _clipboard_set,
+)
+from .actions import (
+    double_click as _double_click_xy,
+)
+from .actions import (
+    drag as _drag_xy,
+)
+from .actions import (
+    hotkey as _hotkey,
+)
+from .actions import (
+    move_to as _move_to_xy,
+)
+from .actions import (
+    press_key as _press_key,
+)
+from .actions import (
+    right_click as _right_click_xy,
+)
+from .actions import (
+    scroll as _scroll_xy,
+)
+from .actions import (
+    type_text as _type_text,
+)
+from .cursor import is_cursor_busy
+from .cursor import wait_cursor_normal as _wait_cursor_normal
 from .exceptions import ElementNotFoundError
-from .screen import list_monitors, capture_screen_with_offset, capture_screen
-from . import capture
+from .pipeline import (
+    MatchResult,
+    SearchConfig,
+    element_exists,
+    find_element,
+    find_element_coords,
+)
+from .screen import capture_screen, capture_screen_with_offset, list_monitors
 
 logger = logging.getLogger(__name__)
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 __all__ = [
     # Core
-    "find", "click", "wait_and_click",
+    "find",
+    "click",
+    "wait_and_click",
     # Interaction
-    "double_click", "right_click", "move_to", "type_into",
-    "click_offset", "scroll_at", "drag_to_element",
+    "double_click",
+    "right_click",
+    "move_to",
+    "type_into",
+    "click_offset",
+    "scroll_at",
+    "drag_to_element",
     # Waiting
-    "wait_for", "wait_cursor_normal", "wait_until_gone",
-    "wait_screen_stable", "wait_any", "wait_all",
+    "wait_for",
+    "wait_cursor_normal",
+    "wait_until_gone",
+    "wait_screen_stable",
+    "wait_any",
+    "wait_all",
     # State
-    "exists", "count",
+    "exists",
+    "count",
     # Clipboard
-    "copy_from", "paste_into",
+    "copy_from",
+    "paste_into",
     # Debug
-    "screenshot_of", "highlight",
+    "screenshot_of",
+    "highlight",
     # Config
-    "set_config", "list_monitors",
-    "SearchConfig", "MatchResult", "ElementNotFoundError",
+    "set_config",
+    "list_monitors",
+    "SearchConfig",
+    "MatchResult",
+    "ElementNotFoundError",
     "find_element_in_image",
-    "element_exists"
+    "element_exists",
 ]
 
 # ---------------------------------------------------------------------------
@@ -143,6 +187,7 @@ def set_config(config: SearchConfig) -> None:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _resolve_cfg(config: Optional[SearchConfig]) -> SearchConfig:
     """Return config if provided, otherwise the module default."""
     return config if config is not None else _default_config
@@ -151,12 +196,12 @@ def _resolve_cfg(config: Optional[SearchConfig]) -> SearchConfig:
 def _find_with_offset(
     template_path,
     config: SearchConfig,
-) -> tuple[MatchResult, int, int]:
+) -> tuple[bool, int, int]:
     """
     Run find_element and also return the monitor offset (offset_x, offset_y).
     The offset must be added to result.center before calling pyautogui.
     """
-    #_, offset_x, offset_y = capture_screen_with_offset(config.monitor_index)
+    # _, offset_x, offset_y = capture_screen_with_offset(config.monitor_index)
     result, x, y = find_element_coords(template_path)
     return result, x, y
 
@@ -165,7 +210,8 @@ def _find_with_offset(
 # Core: find
 # ---------------------------------------------------------------------------
 
-def find_element_in_image(screen, template) -> MatchResult:
+
+def find_element_in_image(screen, template) -> float | None:
     """Realiza o match de um template dentro de uma imagem já capturada."""
     if template is None or screen is None:
         return None
@@ -176,6 +222,7 @@ def find_element_in_image(screen, template) -> MatchResult:
     if max_val >= 0.8:
         return max_val  # Retorna o score ou MatchResult
     return None
+
 
 def find(
     template_path: str,
@@ -211,6 +258,12 @@ def find(
 # Interaction
 # ---------------------------------------------------------------------------
 
+
+# function to click in an defined coord
+def click_coord(x: int, y: int, button, move_duration):
+    _click_xy(x, y, button, move_duration)
+
+
 def click(
     template_path: str,
     dx: int = 0,
@@ -219,7 +272,7 @@ def click(
     button: str = "left",
     move_duration: float = 0.1,
     **kwargs,
-) -> MatchResult:
+) -> MatchResult | None:
     """
     Locate a UI element using template matching and perform a mouse click.
     """
@@ -254,12 +307,11 @@ def double_click(
     template_path: str,
     config: Optional[SearchConfig] = None,
     move_duration: float = 0.1,
-) -> MatchResult:
+) -> MatchResult | None:
     """Locate a UI element and double-click it."""
     cfg = _resolve_cfg(config)
     _, ox, oy = _find_with_offset(template_path, cfg)
-    _double_click_xy(ox, + oy,
-                     move_duration=move_duration)
+    _double_click_xy(ox, +oy, move_duration=move_duration)
 
 
 def right_click(
@@ -270,21 +322,18 @@ def right_click(
     """Locate a UI element and right-click it."""
     cfg = _resolve_cfg(config)
     _, ox, oy = _find_with_offset(template_path, cfg)
-    _right_click_xy(ox, oy,
-                    move_duration=move_duration)
-    return result
+    _right_click_xy(ox, oy, move_duration=move_duration)
 
 
 def move_to(
     template_path: str,
     config: Optional[SearchConfig] = None,
     duration: float = 0.1,
-) -> MatchResult:
+):
     """Move the cursor over an element without clicking (hover)."""
     cfg = _resolve_cfg(config)
     _, ox, oy = _find_with_offset(template_path, cfg)
     _move_to_xy(ox, oy, duration=duration)
-    return result
 
 
 def type_into(
@@ -294,7 +343,7 @@ def type_into(
     clear_first: bool = False,
     interval: float = 0.05,
     **kwargs,
-) -> MatchResult:
+) -> MatchResult | None:
     """
     Click an element (e.g. a text field) and type text into it.
 
@@ -316,6 +365,7 @@ def type_into(
     _type_text(text, interval=interval)
     return result
 
+
 def type(
     text: str,
     interval: float = 0.05,
@@ -328,6 +378,7 @@ def type(
         interval:      Delay between keystrokes in seconds.
     """
     _type_text(text, interval=interval)
+
 
 def press(
     key: str,
@@ -342,9 +393,10 @@ def press(
     for _ in range(presses):
         _press_key(key)
 
+
 def double_press(
-        first_key: str,
-        second_key: str,
+    first_key: str,
+    second_key: str,
 ):
     """
     Press two keys in quick succession.
@@ -355,13 +407,14 @@ def double_press(
     """
     _hotkey(first_key, second_key)
 
+
 def scroll_at(
     template_path: str,
     clicks: int = 3,
     direction: str = "down",
     config: Optional[SearchConfig] = None,
     **kwargs,
-) -> MatchResult:
+) -> MatchResult | None:
     """
     Locate an element and scroll the mouse wheel at its location.
 
@@ -377,8 +430,7 @@ def scroll_at(
     """
     cfg = _resolve_cfg(config)
     _, ox, oy = _find_with_offset(template_path, cfg)
-    _scroll_xy(ox, oy,
-                clicks=clicks, direction=direction)
+    _scroll_xy(ox, oy, clicks=clicks, direction=direction)
 
 
 def drag_to_element(
@@ -418,9 +470,7 @@ def drag_to_element(
     x2 = tgt_result.center[0] + ox
     y2 = tgt_result.center[1] + oy
 
-    logger.info(
-        f"Drag: '{source_path}' ({x1},{y1}) → '{target_path}' ({x2},{y2})"
-    )
+    logger.info(f"Drag: '{source_path}' ({x1},{y1}) → '{target_path}' ({x2},{y2})")
     _drag_xy(x1, y1, x2, y2, duration=duration, button=button)
     return src_result, tgt_result
 
@@ -428,6 +478,7 @@ def drag_to_element(
 # ---------------------------------------------------------------------------
 # Waiting and polling
 # ---------------------------------------------------------------------------
+
 
 def wait_for(
     template_path: str,
@@ -511,7 +562,7 @@ def wait_until_gone(
         threshold_ssim=cfg.threshold_ssim,
         min_akaze_inliers=cfg.min_akaze_inliers,
         scales=cfg.scales,
-        timeout=poll_interval,       # Quick check — don't wait long per poll
+        timeout=poll_interval,  # Quick check — don't wait long per poll
         poll_interval=poll_interval,
     )
 
@@ -594,7 +645,7 @@ def wait_screen_stable(
                     )
                     return True
             else:
-                stable_since = None   # Reset — screen changed again
+                stable_since = None  # Reset — screen changed again
 
         prev_gray = gray
         time.sleep(poll_interval)
@@ -657,9 +708,7 @@ def wait_any(
     while time.monotonic() < deadline:
         for path in template_paths:
             try:
-                result = find_element(
-                    template_path=path, config=check_cfg, **kwargs
-                )
+                result = find_element(template_path=path, config=check_cfg, **kwargs)
                 logger.info(f"wait_any: matched '{path}' at {result.center}")
                 return path, result
             except ElementNotFoundError:
@@ -728,7 +777,7 @@ def wait_all(
                     template_path=path, config=check_cfg, **kwargs
                 )
             except ElementNotFoundError:
-                break   # At least one missing — don't bother checking the rest
+                break  # At least one missing — don't bother checking the rest
 
         if len(found) == len(template_paths):
             logger.info(f"wait_all: all {len(template_paths)} templates found.")
@@ -749,6 +798,7 @@ def wait_all(
 # ---------------------------------------------------------------------------
 # State queries
 # ---------------------------------------------------------------------------
+
 
 def exists(
     template_path: str,
@@ -804,8 +854,10 @@ def count(
         print(f"{n} unchecked items remaining")
     """
     import cv2 as _cv2
-    from .preprocessing import to_edges as _to_edges, resize_image as _resize_image
+
     from .pipeline import _load_template
+    from .preprocessing import resize_image as _resize_image
+    from .preprocessing import to_edges as _to_edges
 
     cfg = _resolve_cfg(config)
     template_bgr = _load_template(template_path)
@@ -848,6 +900,7 @@ def count(
 # Clipboard
 # ---------------------------------------------------------------------------
 
+
 def copy_from(
     template_path: str,
     config: Optional[SearchConfig] = None,
@@ -877,7 +930,7 @@ def copy_from(
     if select_all:
         _hotkey("ctrl", "a")
     _hotkey("ctrl", "c")
-    time.sleep(0.1)   # Give OS time to update clipboard
+    time.sleep(0.1)  # Give OS time to update clipboard
     return _clipboard_get()
 
 
@@ -919,6 +972,7 @@ def paste_into(
 # Debug / diagnostics
 # ---------------------------------------------------------------------------
 
+
 def screenshot_of(
     template_path: str,
     save_path: str = "",
@@ -950,6 +1004,7 @@ def screenshot_of(
         )
     """
     from .pipeline import _load_template
+
     cfg = _resolve_cfg(config)
     result = find(template_path, config=cfg, **kwargs)
     screen, ox, oy = capture_screen_with_offset(cfg.monitor_index)
@@ -1006,6 +1061,7 @@ def highlight(
         vision.highlight("assets/submit.png", save_path="debug/submit_box.png")
     """
     from .pipeline import _load_template
+
     cfg = _resolve_cfg(config)
     result = find(template_path, config=cfg, **kwargs)
     screen, _, _ = capture_screen_with_offset(cfg.monitor_index)
@@ -1025,10 +1081,14 @@ def highlight(
     # Add label above the box
     label = f"Stage {result.stage} | ssim={result.ssim_score:.2f}"
     cv2.putText(
-        annotated, label,
+        annotated,
+        label,
         (x1, max(0, y1 - 8)),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.5, color, 1, cv2.LINE_AA,
+        0.5,
+        color,
+        1,
+        cv2.LINE_AA,
     )
 
     os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)

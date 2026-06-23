@@ -23,20 +23,19 @@ by callers via the `post_processors` extension point (not implemented in MVP).
 """
 
 import logging
-import time
 import os
+import time
 from dataclasses import dataclass, field
-from typing import Optional
 from pathlib import Path
-
+from typing import Optional
 
 import cv2
 
-from .screen import capture_screen, _capture_screen
-from .template_matching import multiscale_template_match, TemplateMatchCandidate
-from .feature_matching import akaze_match, FeatureMatchCandidate
-from .similarity import ssim_verify
 from .exceptions import ElementNotFoundError, TemplateLoadError
+from .feature_matching import FeatureMatchCandidate, akaze_match
+from .screen import _capture_screen, capture_screen
+from .similarity import ssim_verify
+from .template_matching import TemplateMatchCandidate, multiscale_template_match
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +43,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SearchConfig:
@@ -79,6 +79,7 @@ class SearchConfig:
     timeout : float       Total seconds to keep retrying.
     poll_interval : float Seconds between polling cycles.
     """
+
     # Template matching
     threshold_template: float = 0.75
     scales: list[float] = field(
@@ -105,6 +106,7 @@ class SearchConfig:
 # Result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MatchResult:
     """
@@ -118,6 +120,7 @@ class MatchResult:
         elapsed:       Seconds from search start to detection.
         template_path: Path of the matched template.
     """
+
     center: tuple[int, int]
     stage: int
     stage_name: str
@@ -129,6 +132,7 @@ class MatchResult:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_template(template_path: str):
     """Read a template image from disk as a BGR numpy array."""
@@ -169,6 +173,7 @@ def _try_confirm(
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def find_element(
     template_path,
     config: Optional[SearchConfig] = None,
@@ -207,12 +212,18 @@ def find_element(
     cfg = config if config is not None else SearchConfig()
 
     # Apply flat keyword overrides
-    if monitor_index is not None:    cfg.monitor_index    = monitor_index
-    if threshold_template is not None: cfg.threshold_template = threshold_template
-    if threshold_ssim is not None:   cfg.threshold_ssim   = threshold_ssim
-    if min_akaze_inliers is not None: cfg.min_akaze_inliers = min_akaze_inliers
-    if timeout is not None:          cfg.timeout          = timeout
-    if poll_interval is not None:    cfg.poll_interval    = poll_interval
+    if monitor_index is not None:
+        cfg.monitor_index = monitor_index
+    if threshold_template is not None:
+        cfg.threshold_template = threshold_template
+    if threshold_ssim is not None:
+        cfg.threshold_ssim = threshold_ssim
+    if min_akaze_inliers is not None:
+        cfg.min_akaze_inliers = min_akaze_inliers
+    if timeout is not None:
+        cfg.timeout = timeout
+    if poll_interval is not None:
+        cfg.poll_interval = poll_interval
 
     logger.info(
         f"Searching for '{template_path}' (Resolved: {actual_path}) "
@@ -336,78 +347,68 @@ def find_element(
         timeout=cfg.timeout,
     )
 
+
 def resolve_template_path(name: str) -> str:
     """
-    Tenta encontrar o template. 
+    Tenta encontrar o template.
     1. Verifica se 'name' já é um caminho real.
     2. Se não, procura na pasta de templates do AppData.
     """
     # Se o arquivo já existe no caminho passado, usa ele mesmo
     if os.path.exists(name):
         return name
-        
+
     # Se não existe, procura no AppData
-    appdata_dir = Path(os.getenv('APPDATA')) / "nazm" / "templates"
-    
+    appdata_dir = Path(os.getenv("APPDATA")) / "nazm" / "templates"
+
     # Tenta com o nome exato e também garantindo a extensão .png
     possible_names = [name, f"{name}.png", f"{name}.jpg"]
-    
+
     for n in possible_names:
         full_path = appdata_dir / n
         if full_path.exists():
             return str(full_path)
-            
+
     # Se chegar aqui, o arquivo realmente não foi encontrado
     return name
 
 
-
-def element_exists(
-        template_path,
-        threshold: Optional[float] = None
-    ) -> bool:
+def element_exists(template_path, threshold: Optional[float] = None) -> bool:
     """
     Check if an element exists on screen without waiting.
-    
+
     Args:
         template_path: Path to the template image file
         threshold: Similarity threshold (uses default if not specified)
-    
+
     Returns:
         True if element found, False otherwise
     """
     if threshold is None:
         threshold = 0.8
-    
+
     # Capture current screen
     screenshot = _capture_screen()
-    
+
     # Load template image
     if template_path is None:
         raise FileNotFoundError(f"Template image not found: {template_path}")
-    
+
     # Perform template matching
-    result = cv2.matchTemplate(
-        screenshot,
-        template_path,
-        cv2.TM_CCOEFF_NORMED
-    )
+    result = cv2.matchTemplate(screenshot, template_path, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, _ = cv2.minMaxLoc(result)
 
     return max_val >= threshold
 
+
 def find_element_coords(
-    template_img,
-    timeout: float = 5.0,
-    threshold: float = 0.8
+    template_img, timeout: float = 5.0, threshold: float = 0.8
 ) -> tuple[bool, int, int]:
     """
     Retorna (Encontrou?, Centro_X, Centro_Y).
     """
-    
-    
+
     # 2. Match (template_img aqui já deve ser a matriz do cv2.imread)
-    
 
     start_time = time.time()
     end_time = start_time + timeout
@@ -419,24 +420,18 @@ def find_element_coords(
         if screenshot is None or template_img is None:
             return False, 0, 0
 
-        result = cv2.matchTemplate(
-            screenshot,
-            template_img,
-            cv2.TM_CCOEFF_NORMED
-        )
-    
+        result = cv2.matchTemplate(screenshot, template_img, cv2.TM_CCOEFF_NORMED)
+
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
-
-
 
         if max_val >= threshold:
             # 3. Calcula o centro do elemento encontrado
             h, w = template_img.shape[:2]
             center_x = max_loc[0] + (w // 2)
             center_y = max_loc[1] + (h // 2)
-            
+
             return True, center_x, center_y
         time.sleep(0.2)
-    
+
     # Caso não encontre, retorna Falso e coordenadas zeradas (ou None)
     return False, 0, 0

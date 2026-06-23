@@ -12,12 +12,13 @@ import pyautogui
 
 logger = logging.getLogger(__name__)
 
-pyautogui.FAILSAFE = True   # Move cursor to a screen corner to abort
-pyautogui.PAUSE    = 0.05   # Brief inter-call pause — prevents OS queue floods
+pyautogui.FAILSAFE = True  # Move cursor to a screen corner to abort
+pyautogui.PAUSE = 0.05  # Brief inter-call pause — prevents OS queue floods
 
 # ---------------------------------------------------------------------------
 # Mouse — basic
 # ---------------------------------------------------------------------------
+
 
 def click(x: int, y: int, button: str = "left", move_duration: float = 0.1) -> None:
     """Move to (x, y) and perform a mouse click."""
@@ -47,6 +48,7 @@ def move_to(x: int, y: int, duration: float = 0.1) -> None:
 # ---------------------------------------------------------------------------
 # Mouse — scroll
 # ---------------------------------------------------------------------------
+
 
 def scroll(
     x: int,
@@ -83,6 +85,7 @@ def scroll(
 # ---------------------------------------------------------------------------
 # Mouse — drag
 # ---------------------------------------------------------------------------
+
 
 def drag(
     x1: int,
@@ -122,10 +125,10 @@ def drag_relative(
     drag(x, y, x + dx, y + dy, duration=duration, button=button)
 
 
-
 # ---------------------------------------------------------------------------
 # Keyboard — typing
 # ---------------------------------------------------------------------------
+
 
 def type_text(text: str, interval: float = 0.05) -> None:
     """
@@ -180,6 +183,7 @@ def key_up(key: str) -> None:
 # Clipboard
 # ---------------------------------------------------------------------------
 
+
 def clipboard_set(text: str) -> None:
     """
     Place text onto the system clipboard.
@@ -192,14 +196,17 @@ def clipboard_set(text: str) -> None:
     """
     try:
         import pyperclip  # Optional fast path
+
         pyperclip.copy(text)
         logger.debug(f"Clipboard set via pyperclip: {text!r}")
     except ImportError:
         # pyautogui fallback: write to a temp location then Ctrl+A / Ctrl+C
         # is fragile; just use Win32 directly on Windows as best effort.
         import sys
+
         if sys.platform == "win32":
             import ctypes
+
             ctypes.windll.user32.OpenClipboard(0)
             ctypes.windll.user32.EmptyClipboard()
             # Encode text as UTF-16LE for CF_UNICODETEXT
@@ -227,13 +234,16 @@ def clipboard_get() -> str:
     """
     try:
         import pyperclip
+
         text = pyperclip.paste()
         logger.debug(f"Clipboard get via pyperclip: {text!r}")
         return text
     except ImportError:
         import sys
+
         if sys.platform == "win32":
             import ctypes
+
             ctypes.windll.user32.OpenClipboard(0)
             handle = ctypes.windll.user32.GetClipboardData(13)  # CF_UNICODETEXT
             if not handle:

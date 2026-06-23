@@ -35,13 +35,13 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from .preprocessing import to_grayscale, crop_region, resize_image
+from .preprocessing import crop_region, to_grayscale
 
 logger = logging.getLogger(__name__)
 
 # Standard SSIM stabilisation constants (Wang et al. 2004)
-_C1 = (0.01 * 255) ** 2   # Luminance stabiliser
-_C2 = (0.03 * 255) ** 2   # Contrast stabiliser
+_C1 = (0.01 * 255) ** 2  # Luminance stabiliser
+_C2 = (0.03 * 255) ** 2  # Contrast stabiliser
 
 # Window size for local statistics.  11px is the canonical value from the
 # original paper; smaller values respond to finer structural differences.
@@ -72,17 +72,17 @@ def _ssim_numpy(img_a: np.ndarray, img_b: np.ndarray) -> float:
 
     mu_a_sq = mu_a * mu_a
     mu_b_sq = mu_b * mu_b
-    mu_ab   = mu_a * mu_b
+    mu_ab = mu_a * mu_b
 
     sigma_a_sq = cv2.blur(img_a * img_a, ksize) - mu_a_sq
     sigma_b_sq = cv2.blur(img_b * img_b, ksize) - mu_b_sq
-    sigma_ab   = cv2.blur(img_a * img_b, ksize) - mu_ab
+    sigma_ab = cv2.blur(img_a * img_b, ksize) - mu_ab
 
     # Clamp negative variances that can arise from floating-point noise
     sigma_a_sq = np.maximum(sigma_a_sq, 0.0)
     sigma_b_sq = np.maximum(sigma_b_sq, 0.0)
 
-    numerator   = (2.0 * mu_ab + _C1) * (2.0 * sigma_ab + _C2)
+    numerator = (2.0 * mu_ab + _C1) * (2.0 * sigma_ab + _C2)
     denominator = (mu_a_sq + mu_b_sq + _C1) * (sigma_a_sq + sigma_b_sq + _C2)
 
     ssim_map = numerator / (denominator + 1e-10)
@@ -152,7 +152,9 @@ def ssim_verify(
         )
         # Fallback: normalised cross-correlation as a simpler structural proxy
         score = float(np.corrcoef(tmpl_gray.ravel(), crop_gray.ravel())[0, 1])
-        score = max(0.0, score)   # corrcoef can return negative values for inverted content
+        score = max(
+            0.0, score
+        )  # corrcoef can return negative values for inverted content
     else:
         score = _ssim_numpy(tmpl_gray, crop_gray)
 
